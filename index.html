@@ -5,7 +5,7 @@
   <title>Shiyun</title>
   <style>
     body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
+    canvas { display: block; cursor: grab; }
   </style>
   <script type="importmap">
   {
@@ -39,9 +39,13 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // === CONTROLS ===
+    // === CONTROLS (désactivés par défaut après animation) ===
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    // On désactive tous les contrôles par défaut (seront réactivés pendant l'animation seulement)
+    controls.enableRotate = false;
+    controls.enableZoom = false;
+    controls.enablePan = false;
 
     // === LUMIÈRES ===
     const light = new THREE.DirectionalLight(0xffffff, 3.5);
@@ -59,12 +63,15 @@
     const ambient = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambient);
 
+    // Variable pour stocker le modèle chargé
+    let model = null;
+    // Vitesse de rotation du modèle
+    const rotationSpeed = 0.05;
+
     // === CHARGEMENT DU MODÈLE GLB ===
     const loader = new GLTFLoader();
     loader.load('model/shiyun.glb', (gltf) => {
-
-   
-      const model = gltf.scene;
+      model = gltf.scene;
       model.scale.set(5, 5, 5);
       model.traverse((child) => {
         if (child.isMesh) {
@@ -82,13 +89,39 @@
     const targetPosition = new THREE.Vector3(-5, 0, 5);
     let progress = 0;
     const speed = 0.008;
+    let animationFinished = false;
+
+    // Gestion de la molette de la souris pour la rotation du modèle
+    window.addEventListener('wheel', (event) => {
+      // Ne pas agir si l'animation n'est pas terminée ou si le modèle n'est pas chargé
+      if (!animationFinished || !model) return;
+      
+      // Empêcher le comportement par défaut (défilement de la page)
+      event.preventDefault();
+      
+      // Rotation du modèle sur l'axe Y (vertical)
+      // DeltaY positif = molette vers le bas = rotation dans un sens
+      // DeltaY négatif = molette vers le haut = rotation dans l'autre sens
+      model.rotation.y += event.deltaY * 0.001 * rotationSpeed;
+    }, { passive: false }); // passive: false pour pouvoir utiliser preventDefault
 
     function animate() {
       requestAnimationFrame(animate);
 
+      // Animation de la caméra seulement si elle n'est pas terminée
       if (progress < 1) {
         progress += speed;
+        // Clamper le progress à 1 pour ne pas dépasser
+        progress = Math.min(progress, 1);
         camera.position.lerpVectors(startPosition, targetPosition, progress);
+        camera.lookAt(0, 0, 0); // Garder la caméra orientée vers le centre
+        
+        // Si l'animation est terminée
+        if (progress === 1) {
+          animationFinished = true;
+          // Désactiver complètement les contrôles OrbitControls
+          controls.dispose(); // Libérer les ressources des contrôles
+        }
       }
 
       controls.update();
@@ -106,5 +139,3 @@
   </script>
 </body>
 </html>
-
-
