@@ -42,7 +42,7 @@
     // === CONTROLS (désactivés par défaut après animation) ===
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    // On désactive tous les contrôles par défaut (seront réactivés pendant l'animation seulement)
+    // On désactive tous les contrôles par défaut
     controls.enableRotate = false;
     controls.enableZoom = false;
     controls.enablePan = false;
@@ -65,8 +65,8 @@
 
     // Variable pour stocker le modèle chargé
     let model = null;
-    // Vitesse de rotation du modèle
-    const rotationSpeed = 0.05;
+    // ✨ PARAMÈTRE DE VITESSE DE ROTATION (augmenté pour plus de réactivité)
+    const rotationSpeed = 0.5; // Augmenté de 0.05 à 0.5 (10x plus rapide)
 
     // === CHARGEMENT DU MODÈLE GLB ===
     const loader = new GLTFLoader();
@@ -91,36 +91,30 @@
     const speed = 0.008;
     let animationFinished = false;
 
-    // Gestion de la molette de la souris pour la rotation du modèle
+    // Gestion de la molette de la souris (rotation plus rapide)
     window.addEventListener('wheel', (event) => {
-      // Ne pas agir si l'animation n'est pas terminée ou si le modèle n'est pas chargé
       if (!animationFinished || !model) return;
       
-      // Empêcher le comportement par défaut (défilement de la page)
       event.preventDefault();
       
-      // Rotation du modèle sur l'axe Y (vertical)
-      // DeltaY positif = molette vers le bas = rotation dans un sens
-      // DeltaY négatif = molette vers le haut = rotation dans l'autre sens
-      model.rotation.y += event.deltaY * 0.001 * rotationSpeed;
-    }, { passive: false }); // passive: false pour pouvoir utiliser preventDefault
+      // ✨ AUGMENTATION DE LA ROTATION : facteur 0.01 au lieu de 0.001 + rotationSpeed plus élevé
+      // Vous pouvez ajuster le 0.01 (ex: 0.02 pour encore plus rapide)
+      model.rotation.y += event.deltaY * 0.01 * rotationSpeed;
+    }, { passive: false });
 
     function animate() {
       requestAnimationFrame(animate);
 
-      // Animation de la caméra seulement si elle n'est pas terminée
+      // Animation de la caméra
       if (progress < 1) {
         progress += speed;
-        // Clamper le progress à 1 pour ne pas dépasser
         progress = Math.min(progress, 1);
         camera.position.lerpVectors(startPosition, targetPosition, progress);
-        camera.lookAt(0, 0, 0); // Garder la caméra orientée vers le centre
+        camera.lookAt(0, 0, 0);
         
-        // Si l'animation est terminée
         if (progress === 1) {
           animationFinished = true;
-          // Désactiver complètement les contrôles OrbitControls
-          controls.dispose(); // Libérer les ressources des contrôles
+          controls.dispose();
         }
       }
 
