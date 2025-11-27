@@ -23,19 +23,17 @@
     import { GLTFLoader } from 'GLTFLoader';
     import { OrbitControls } from 'OrbitControls';
 
-    // === CONFIGURATION DES IMAGES ===
-    // Liste des images dans le dossier "image/" (ajoutez/supprimez selon vos fichiers)
+    // === CONFIGURATION DES IMAGES (VOS FICHIERS SPECIFIQUES) ===
     const imageFiles = [
       'wumu.png',
       'wumu1.png',
       'wumu2.png',
       'wumu3.png',
-      // Ajoutez toutes vos images ici
+      'wumu4.png'
     ];
-    // Paramètres du cercle d'images
-    const circleRadius = 25; // Rayon du cercle (distance du modèle)
-    const imageSize = { width: 8, height: 6 }; // Taille des planés d'images
-    const imageHeight = 0; // Hauteur des images sur l'axe Y (0 = même niveau que le modèle)
+    const circleRadius = 28; // Rayon du cercle (ajusté pour 5 images)
+    const imageSize = { width: 10, height: 7 }; // Taille des images (plus grande pour être visibles)
+    const imageHeight = 1; // Hauteur légèrement au-dessus du sol
 
     // === SCÈNE ===
     const scene = new THREE.Scene();
@@ -78,8 +76,8 @@
 
     // === VARIABLES GLOBALES ===
     let model = null;
-    const rotationSpeed = 0.5;
-    const imagePlanes = []; // Stockage des planés d'images
+    const rotationSpeed = 0.6; // Vitesse de rotation optimisée
+    const imagePlanes = [];
 
     // === CHARGEMENT DU MODÈLE GLB ===
     const loader = new GLTFLoader();
@@ -93,88 +91,81 @@
         }
       });
       scene.add(model);
-
-      // Charger les images APRES que le modèle soit chargé
-      loadImagesInCircle();
+      loadImagesInCircle(); // Charger images après modèle
     }, undefined, (error) => {
       console.error('Erreur de chargement du modèle :', error);
-      // Charger les images même si le modèle échoue (pour tester)
-      loadImagesInCircle();
+      loadImagesInCircle(); // Charger images même si modèle échoue
     });
 
-    // === FONCTION DE CHARGEMENT DES IMAGES EN CERCLE ===
+    // === CHARGEMENT DES IMAGES EN CERCLE ===
     function loadImagesInCircle() {
       if (imageFiles.length === 0) {
-        console.warn('Aucune image dans la liste imageFiles !');
+        console.warn('Aucune image trouvée !');
         return;
       }
 
       const textureLoader = new THREE.TextureLoader();
-      const angleStep = (Math.PI * 2) / imageFiles.length; // Angle entre chaque image
+      const angleStep = (Math.PI * 2) / imageFiles.length; // Angle uniforme pour 5 images
 
       imageFiles.forEach((file, index) => {
-        // Calcul de la position sur le cercle
+        // Calcul position sur le cercle
         const angle = index * angleStep;
         const x = Math.cos(angle) * circleRadius;
         const z = Math.sin(angle) * circleRadius;
 
-        // Chargement de la texture de l'image
+        // Charger texture avec gestion des erreurs
         textureLoader.load(`image/${file}`, (texture) => {
-          // Création du matériau avec l'image
-          const material = new THREE.MeshBasicMaterial({
+          // Améliorer la qualité des images
+          texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          texture.needsUpdate = true;
+
+          // Matériau avec transparence et double face
+          const material = new THREE.MeshLambertMaterial({
             map: texture,
-            side: THREE.DoubleSide, // Afficher l'image des deux côtés
-            transparent: true, // Gérer la transparence si besoin
-            opacity: 1
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 1,
+            depthWrite: false // Éviter les conflits de profondeur entre images
           });
 
-          // Création du plané (géométrie)
+          // Géométrie de plané
           const geometry = new THREE.PlaneGeometry(imageSize.width, imageSize.height);
           const plane = new THREE.Mesh(geometry, material);
 
-          // Positionnement du plané sur le cercle
+          // Positionnement et orientation
           plane.position.set(x, imageHeight, z);
-          // Orienter le plané vers le centre (modèle)
-          plane.lookAt(0, imageHeight, 0);
-          // Ajouter un petit décalage en hauteur pour éviter le sol
-          plane.position.y = imageHeight;
+          plane.lookAt(0, imageHeight, 0); // Tourné vers le centre
+          plane.receiveShadow = true;
 
-          // Ajouter à la scène et au tableau de suivi
           scene.add(plane);
           imagePlanes.push(plane);
-
-          // Ajouter des ombres (optionnel)
-          plane.castShadow = false;
-          plane.receiveShadow = true;
         }, undefined, (error) => {
-          console.error(`Erreur de chargement de l'image ${file} :`, error);
+          console.error(`Erreur chargement image ${file} :`, error);
         });
       });
     }
 
-    // === ANIMATION DE LA CAMÉRA ===
+    // === ANIMATION CAMÉRA ===
     const startPosition = new THREE.Vector3(100, 100, 70);
     const targetPosition = new THREE.Vector3(-5, 0, 5);
     let progress = 0;
     const speed = 0.008;
     let animationFinished = false;
 
-    // === GESTION DE LA MOLETTE ===
+    // === GESTION MOLETTE (ROTATION MODÈLE + IMAGES) ===
     window.addEventListener('wheel', (event) => {
       if (!animationFinished || !model) return;
       
       event.preventDefault();
-      const rotationDelta = event.deltaY * 0.01 * rotationSpeed;
-      
-      // Rotation du modèle
+      const rotationDelta = event.deltaY * 0.012 * rotationSpeed; // Vitesse réactive
+
+      // Rotation modèle
       model.rotation.y += rotationDelta;
-      
-      // Rotation des images en sens inverse pour rester autour du modèle
-      // (ou supprimez cette partie si vous voulez que les images restent fixes)
+
+      // Rotation images en sens inverse pour rester en cercle
       imagePlanes.forEach(plane => {
         plane.rotation.y -= rotationDelta;
-        // Reorienter les images vers le centre
-        plane.lookAt(0, imageHeight, 0);
+        plane.lookAt(0, imageHeight, 0); // Garder orientation vers centre
       });
     }, { passive: false });
 
@@ -200,7 +191,7 @@
 
     animate();
 
-    // === ADAPTATION À LA FENÊTRE ===
+    // === ADAPTATION FENÊTRE ===
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
