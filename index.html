@@ -23,18 +23,6 @@
     import { GLTFLoader } from 'GLTFLoader';
     import { OrbitControls } from 'OrbitControls';
 
-    // === CONFIGURATION DES IMAGES (VOS FICHIERS SPECIFIQUES) ===
-    const imageFiles = [
-      'wumu.png',
-      'wumu1.png',
-      'wumu2.png',
-      'wumu3.png',
-      'wumu4.png'
-    ];
-    const circleRadius = 28; // Rayon du cercle (ajusté pour 5 images)
-    const imageSize = { width: 10, height: 7 }; // Taille des images (plus grande pour être visibles)
-    const imageHeight = 1; // Hauteur légèrement au-dessus du sol
-
     // === SCÈNE ===
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
@@ -51,9 +39,10 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // === CONTROLS ===
+    // === CONTROLS (désactivés par défaut après animation) ===
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    // On désactive tous les contrôles par défaut
     controls.enableRotate = false;
     controls.enableZoom = false;
     controls.enablePan = false;
@@ -74,10 +63,10 @@
     const ambient = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambient);
 
-    // === VARIABLES GLOBALES ===
+    // Variable pour stocker le modèle chargé
     let model = null;
-    const rotationSpeed = 0.6; // Vitesse de rotation optimisée
-    const imagePlanes = [];
+    // ✨ PARAMÈTRE DE VITESSE DE ROTATION (augmenté pour plus de réactivité)
+    const rotationSpeed = 0.5; // Augmenté de 0.05 à 0.5 (10x plus rapide)
 
     // === CHARGEMENT DU MODÈLE GLB ===
     const loader = new GLTFLoader();
@@ -91,88 +80,32 @@
         }
       });
       scene.add(model);
-      loadImagesInCircle(); // Charger images après modèle
     }, undefined, (error) => {
       console.error('Erreur de chargement du modèle :', error);
-      loadImagesInCircle(); // Charger images même si modèle échoue
     });
 
-    // === CHARGEMENT DES IMAGES EN CERCLE ===
-    function loadImagesInCircle() {
-      if (imageFiles.length === 0) {
-        console.warn('Aucune image trouvée !');
-        return;
-      }
-
-      const textureLoader = new THREE.TextureLoader();
-      const angleStep = (Math.PI * 2) / imageFiles.length; // Angle uniforme pour 5 images
-
-      imageFiles.forEach((file, index) => {
-        // Calcul position sur le cercle
-        const angle = index * angleStep;
-        const x = Math.cos(angle) * circleRadius;
-        const z = Math.sin(angle) * circleRadius;
-
-        // Charger texture avec gestion des erreurs
-        textureLoader.load(`image/${file}`, (texture) => {
-          // Améliorer la qualité des images
-          texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-          texture.needsUpdate = true;
-
-          // Matériau avec transparence et double face
-          const material = new THREE.MeshLambertMaterial({
-            map: texture,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 1,
-            depthWrite: false // Éviter les conflits de profondeur entre images
-          });
-
-          // Géométrie de plané
-          const geometry = new THREE.PlaneGeometry(imageSize.width, imageSize.height);
-          const plane = new THREE.Mesh(geometry, material);
-
-          // Positionnement et orientation
-          plane.position.set(x, imageHeight, z);
-          plane.lookAt(0, imageHeight, 0); // Tourné vers le centre
-          plane.receiveShadow = true;
-
-          scene.add(plane);
-          imagePlanes.push(plane);
-        }, undefined, (error) => {
-          console.error(`Erreur chargement image ${file} :`, error);
-        });
-      });
-    }
-
-    // === ANIMATION CAMÉRA ===
+    // === ANIMATION DE LA CAMÉRA ===
     const startPosition = new THREE.Vector3(100, 100, 70);
     const targetPosition = new THREE.Vector3(-5, 0, 5);
     let progress = 0;
     const speed = 0.008;
     let animationFinished = false;
 
-    // === GESTION MOLETTE (ROTATION MODÈLE + IMAGES) ===
+    // Gestion de la molette de la souris (rotation plus rapide)
     window.addEventListener('wheel', (event) => {
       if (!animationFinished || !model) return;
       
       event.preventDefault();
-      const rotationDelta = event.deltaY * 0.012 * rotationSpeed; // Vitesse réactive
-
-      // Rotation modèle
-      model.rotation.y += rotationDelta;
-
-      // Rotation images en sens inverse pour rester en cercle
-      imagePlanes.forEach(plane => {
-        plane.rotation.y -= rotationDelta;
-        plane.lookAt(0, imageHeight, 0); // Garder orientation vers centre
-      });
+      
+      // ✨ AUGMENTATION DE LA ROTATION : facteur 0.01 au lieu de 0.001 + rotationSpeed plus élevé
+      // Vous pouvez ajuster le 0.01 (ex: 0.02 pour encore plus rapide)
+      model.rotation.y += event.deltaY * 0.01 * rotationSpeed;
     }, { passive: false });
 
-    // === ANIMATION PRINCIPALE ===
     function animate() {
       requestAnimationFrame(animate);
 
+      // Animation de la caméra
       if (progress < 1) {
         progress += speed;
         progress = Math.min(progress, 1);
@@ -191,7 +124,7 @@
 
     animate();
 
-    // === ADAPTATION FENÊTRE ===
+    // === ADAPTATION À LA FENÊTRE ===
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
