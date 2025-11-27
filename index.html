@@ -90,7 +90,9 @@
       'image/wumu1.jpg',
       'image/wumu2.jpg',
       'image/wumu3.jpg',
-      'image/wumu4.jpg'
+      'image/wumu4.jpg',
+      'image/wumu5.jpg',
+      'image/wumu6.jpg'
     ];
 
     const radius = 35;     // distance du cercle par rapport au centre
@@ -136,13 +138,13 @@
       event.preventDefault();
 
       // facteur de base (tu peux l'augmenter si tu veux tout plus rapide)
-      const baseFactor = event.deltaY * 0.01;
+      const baseFactor = event.deltaY * 0.005;
 
       // rotation du modèle
       model.rotation.y += baseFactor * rotationSpeed;
 
       // rotation du cercle d'images : 1,5x plus vite que le modèle
-      imageGroup.rotation.y += baseFactor * rotationSpeed * 1.5;
+      imageGroup.rotation.y += baseFactor * rotationSpeed * 1;
     }, { passive: false });
 
     // === BOUCLE D'ANIMATION ===
@@ -177,4 +179,5 @@
   </script>
 </body>
 </html>
+
 
