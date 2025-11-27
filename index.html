@@ -39,10 +39,9 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // === CONTROLS (désactivés par défaut après animation) ===
+    // === CONTROLS (désactivés après animation) ===
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    // On désactive tous les contrôles par défaut
     controls.enableRotate = false;
     controls.enableZoom = false;
     controls.enablePan = false;
@@ -63,12 +62,10 @@
     const ambient = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambient);
 
-    // Variable pour stocker le modèle chargé
+    // === MODÈLE 3D ===
     let model = null;
-    // ✨ PARAMÈTRE DE VITESSE DE ROTATION (augmenté pour plus de réactivité)
-    const rotationSpeed = 0.5; // Augmenté de 0.05 à 0.5 (10x plus rapide)
+    const rotationSpeed = 0.5; // vitesse de rotation du modèle
 
-    // === CHARGEMENT DU MODÈLE GLB ===
     const loader = new GLTFLoader();
     loader.load('model/shiyun.glb', (gltf) => {
       model = gltf.scene;
@@ -84,6 +81,47 @@
       console.error('Erreur de chargement du modèle :', error);
     });
 
+    // === CERCLE D'IMAGES AUTOUR DU MODÈLE ===
+    const imageGroup = new THREE.Group(); // groupe qui contiendra les images
+    scene.add(imageGroup);
+
+    const textureLoader = new THREE.TextureLoader();
+    const imagePaths = [
+      'image/wumu1.jpg',
+      'image/wumu2.jpg',
+      'image/wumu3.jpg',
+      'image/wumu4.jpg'
+    ];
+
+    const radius = 35;     // distance du cercle par rapport au centre
+    const height = 8;      // hauteur des images
+    const imageWidth = 10; // taille des plans
+    const imageHeight = 14;
+
+    imagePaths.forEach((path, index) => {
+      const texture = textureLoader.load(path);
+      const geometry = new THREE.PlaneGeometry(imageWidth, imageHeight);
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+
+      const plane = new THREE.Mesh(geometry, material);
+
+      const angle = (index / imagePaths.length) * Math.PI * 2;
+      plane.position.set(
+        Math.cos(angle) * radius,
+        height,
+        Math.sin(angle) * radius
+      );
+
+      // Les images regardent vers le centre (là où est le modèle)
+      plane.lookAt(new THREE.Vector3(0, height, 0));
+
+      imageGroup.add(plane);
+    });
+
     // === ANIMATION DE LA CAMÉRA ===
     const startPosition = new THREE.Vector3(100, 100, 70);
     const targetPosition = new THREE.Vector3(-5, 0, 5);
@@ -91,17 +129,23 @@
     const speed = 0.008;
     let animationFinished = false;
 
-    // Gestion de la molette de la souris (rotation plus rapide)
+    // === MOLETTE DE LA SOURIS ===
     window.addEventListener('wheel', (event) => {
       if (!animationFinished || !model) return;
-      
+
       event.preventDefault();
-      
-      // ✨ AUGMENTATION DE LA ROTATION : facteur 0.01 au lieu de 0.001 + rotationSpeed plus élevé
-      // Vous pouvez ajuster le 0.01 (ex: 0.02 pour encore plus rapide)
-      model.rotation.y += event.deltaY * 0.01 * rotationSpeed;
+
+      // facteur de base (tu peux l'augmenter si tu veux tout plus rapide)
+      const baseFactor = event.deltaY * 0.01;
+
+      // rotation du modèle
+      model.rotation.y += baseFactor * rotationSpeed;
+
+      // rotation du cercle d'images : 1,5x plus vite que le modèle
+      imageGroup.rotation.y += baseFactor * rotationSpeed * 1.5;
     }, { passive: false });
 
+    // === BOUCLE D'ANIMATION ===
     function animate() {
       requestAnimationFrame(animate);
 
@@ -111,7 +155,7 @@
         progress = Math.min(progress, 1);
         camera.position.lerpVectors(startPosition, targetPosition, progress);
         camera.lookAt(0, 0, 0);
-        
+
         if (progress === 1) {
           animationFinished = true;
           controls.dispose();
